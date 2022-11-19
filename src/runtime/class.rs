@@ -1,8 +1,11 @@
-use super::{context::Context, ivar::Ivar, method::Method, property::Property, protocol::Protocol};
-use std::{
-    borrow::BorrowMut,
-    cell::RefCell,
-    rc::{Rc, Weak},
+use slotmap::Key;
+
+use super::{
+    context::{ClassKey, Context},
+    ivar::Ivar,
+    method::Method,
+    property::Property,
+    protocol::Protocol,
 };
 
 bitflags::bitflags! {
@@ -23,9 +26,9 @@ pub trait Receiver {
 }
 
 #[derive(Default)]
-pub struct ClassData {
-    metaclass: Weak<Class>,
-    superclass: Option<Weak<Class>>,
+pub struct Class {
+    pub metaclass: ClassKey,
+    pub superclass: Option<ClassKey>,
     // TODO: this should be not an i8
     // dispatch_table: i8,
     // first_subclass: Arc<Class>,
@@ -41,14 +44,25 @@ pub struct ClassData {
     properties: Vec<Property>,
 }
 
-pub struct Class(pub(crate) RefCell<ClassData>);
-
-pub struct ClassPair {
-    pub(crate) class: Rc<Class>,
-    pub(crate) metaclass: Rc<Class>,
+pub enum ClassKind {
+    Regular,
+    Meta,
 }
 
 impl Class {
+    pub fn new(name: &str, metaclass: ClassKey, superclass: Option<ClassKey>) -> Self {
+        Self {
+            metaclass,
+            superclass,
+            name: name.to_string(),
+            ivars: Vec::new(),
+            methods: Vec::new(),
+            protocols: Vec::new(),
+            reference_list: 0,
+            properties: Vec::new(),
+        }
+    }
+
     fn is_registered(&self) -> bool {
         // TODO: implement
         return true;
@@ -66,8 +80,6 @@ impl Class {
 
         // No duplicate ivar names
         if !self
-            .0
-            .borrow()
             .ivars
             .iter()
             .find(|ivar_| ivar.name == ivar_.name)
@@ -76,59 +88,47 @@ impl Class {
             return false;
         }
 
-        self.0.borrow_mut().ivars.push(ivar);
+        self.ivars.push(ivar);
         true
     }
 
     /// superclass: [None] if the class should be a root class
     pub fn alloc<'a>(
         context: &'a mut Context,
-        superclass: Option<&'a Class>,
+        superclass: Option<ClassKey>,
         name: &str,
         _extra_bytes: usize,
-    ) -> Option<&'a Self> {
-        if context.registered_classes.lookup(name).is_some() {
+    ) -> Option<ClassKey> {
+        if context.registered_classes.contains_key(name) {
             return None;
         }
 
-        let class = Rc::new(Class(RefCell::new(ClassData::default())));
-        let metaclass = Rc::new(Class(RefCell::new(ClassData::default())));
+        let class_index = context.classes.insert(Class {
+            superclass,
+            ..Default::default()
+        });
+        let metaclass_index = context.classes.insert(Class::default());
 
-        {
-            let mut metaclass_ref = metaclass.0.borrow_mut();
-            match superclass {
-                // Metaclasses of root classes are precious little flowers and work a
-                // little differently
-                None => {
-                    metaclass_ref.metaclass = Rc::downgrade(&metaclass);
-                    metaclass_ref.superclass = Some(Rc::downgrade(&class));
-                }
-                Some(superclass) => {
-                    // Initialize the metaclass
-                    // Set the meta-metaclass pointer to the name.  The runtime will fix this
-                    // in objc_resolve_class().
-                    // If the superclass is not yet resolved, then we need to look it up
-                    // via the class table.
+        context.class_kind[class_index] = ClassKind::Regular;
+        context.class_kind[metaclass_index] = ClassKind::Meta;
 
-                    let super_meta = &superclass.0.borrow().metaclass;
-
-                    metaclass_ref.metaclass = super_meta.clone();
-                    metaclass_ref.superclass = Some(super_meta.clone());
-                }
+        match superclass {
+            // Metaclasses of root classes are precious little flowers and work a
+            // little differently
+            None => {
+                let metaclass = &mut context.classes[metaclass_index];
+                metaclass.metaclass = metaclass_index;
+                metaclass.superclass = Some(class_index);
             }
-        };
+            Some(superclass_index) => {
+                // TODO: do the superclass' need to be registered?
+                let super_meta = context.classes.get(superclass_index)?.metaclass;
+                let metaclass = &mut context.classes[metaclass_index];
+                metaclass.metaclass = super_meta;
+                metaclass.superclass = Some(super_meta);
+            }
+        }
 
-        context
-            .unregistered_classes
-            .0
-            .push(ClassPair { class, metaclass });
-        Some(
-            &*context
-                .unregistered_classes
-                .0
-                .last()
-                .expect("just added an element")
-                .class,
-        )
+        Some(class_index)
     }
 }
