@@ -2,12 +2,12 @@
 
 use crate::runtime::{
     class::{Class as ObjcClass, Flags},
-    context::{ClassKey, Context},
+    context::Context,
     ivar::Ivar,
 };
 use std::{
     cell::LazyCell,
-    ffi::{c_char, CStr, CString},
+    ffi::{c_char, c_uint, CStr, CString},
     ptr::NonNull,
     sync::Mutex,
 };
@@ -71,6 +71,7 @@ pub extern "C" fn class_getInstanceVariable(
     }
 }
 
+// TODO: rewrite using object_getClass
 #[no_mangle]
 pub extern "C" fn class_getClassVariable(cls: Class, name: *const c_char) -> Option<NonNull<Ivar>> {
     let name = unsafe { CStr::from_ptr(name) }
@@ -113,5 +114,80 @@ pub extern "C" fn class_addIvar(
             let ivar = Ivar::new(name, size, alignment, types);
             unsafe { cls.as_mut() }.add_ivar(ivar)
         }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn class_copyIvarList(
+    cls: Class,
+    out_count: *mut c_uint,
+) -> Option<NonNull<NonNull<Ivar>>> {
+    if !out_count.is_null() {
+        unsafe { *out_count = 0 };
+    }
+
+    let ref mut ivars = unsafe { cls?.as_mut() }.ivars;
+
+    if ivars.is_empty() {
+        return None;
+    }
+
+    unsafe { *out_count = ivars.len() as c_uint };
+
+    NonNull::new(
+        Box::into_raw(
+            ivars
+                .iter_mut()
+                .map(|ivar| unsafe { NonNull::new_unchecked(ivar as *mut Ivar) })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        )
+        .as_mut_ptr(),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_class_copyIvarList() {
+        let mut objc_class = ObjcClass::default();
+        let cls = NonNull::new(&mut objc_class as *mut _);
+        let out_count = std::ptr::null::<c_uint>().cast_mut();
+        let output = class_copyIvarList(cls, out_count);
+
+        assert!(output.is_none());
+        assert!(out_count.is_null());
+
+        // we won't change [cls] at all, but now that we're supplying a pointer,
+        // we should get zero back
+
+        // just need this non-zero so we can test it's actually set
+        let mut out_count: c_uint = 1;
+
+        let new_output = class_copyIvarList(cls, &mut out_count as *mut _);
+
+        assert_eq!(new_output, output);
+        assert_eq!(out_count, 0);
+
+        // add an ivar, see if we get a new number
+        objc_class.ivars.push(Ivar::new(
+            "fizzbuzz".to_string(),
+            0,
+            0,
+            "foobar".to_string(),
+        ));
+
+        let new_output = class_copyIvarList(cls, &mut out_count as *mut _);
+        assert!(new_output.is_some());
+        assert_eq!(
+            unsafe { new_output.unwrap().as_ref().as_ptr() } as *const _,
+            &objc_class.ivars[0] as *const _
+        );
+        assert_eq!(out_count, 1);
+
+        // the caller takes ownership of the returned pointers, so let's clean
+        // up
+        unsafe { Box::from_raw(new_output.unwrap().as_ptr()) };
     }
 }

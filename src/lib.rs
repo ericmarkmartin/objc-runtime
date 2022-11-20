@@ -1,5 +1,6 @@
 #![feature(once_cell)]
 #![feature(const_cstr_methods)]
+#![feature(slice_ptr_get)]
 pub mod ffi;
 pub mod runtime;
 
