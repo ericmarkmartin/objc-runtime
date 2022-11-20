@@ -1,17 +1,16 @@
-use slotmap::{new_key_type, SecondaryMap, SlotMap};
+use slotmap::{new_key_type, SlotMap};
 
 new_key_type! {
     pub struct ClassKey;
 }
 
-use super::class::{Class, ClassKind, Flags};
+use super::class::{Class, Flags};
 use std::collections::HashMap;
 
 pub struct Context {
     pub(crate) classes: SlotMap<ClassKey, Class>,
     pub(crate) registered_classes: HashMap<String, ClassKey>,
     pub(crate) registered_metaclasses: HashMap<String, ClassKey>,
-    pub(crate) class_kind: SecondaryMap<ClassKey, ClassKind>,
 }
 
 impl Context {
@@ -20,7 +19,6 @@ impl Context {
             classes: SlotMap::with_key(),
             registered_classes: HashMap::new(),
             registered_metaclasses: HashMap::new(),
-            class_kind: SecondaryMap::new(),
         }
     }
 
@@ -41,9 +39,6 @@ impl Context {
         });
         let metaclass_index = context.classes.insert(Class::default());
 
-        context.class_kind[class_index] = ClassKind::Regular;
-        context.class_kind[metaclass_index] = ClassKind::Meta;
-
         match superclass {
             // Metaclasses of root classes are precious little flowers and work a
             // little differently
@@ -63,7 +58,7 @@ impl Context {
 
         let metaclass = &mut context.classes[metaclass_index];
         metaclass.name = name.to_string();
-        metaclass.info = Flags::USER_CREATED;
+        metaclass.info = Flags::USER_CREATED | Flags::META;
 
         // Set up the new class
         let class = &mut context.classes[class_index];

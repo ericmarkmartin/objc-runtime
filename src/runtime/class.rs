@@ -39,11 +39,6 @@ pub struct Class {
     pub info: Flags,
 }
 
-pub enum ClassKind {
-    Regular,
-    Meta,
-}
-
 impl Class {
     pub fn new(name: &str, metaclass: ClassKey, superclass: Option<ClassKey>) -> Self {
         Self {
@@ -63,10 +58,6 @@ impl Class {
         // TODO: implement
         return true;
     }
-
-    // fn get_ivar_with_name(&self, name: &str) -> Option<&Ivar> {
-    //     self.0.borrow().ivars.iter().find(|ivar| ivar.name == name)
-    // }
 
     pub fn add_ivar(&mut self, ivar: Ivar) -> bool {
         // Class must already be registered
