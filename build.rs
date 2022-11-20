@@ -1,6 +1,6 @@
 use std::env;
 
-use cbindgen::{Config, PtrConfig};
+use cbindgen::Config;
 
 fn main() {
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
