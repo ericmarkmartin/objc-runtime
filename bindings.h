@@ -20,3 +20,5 @@ struct Ivar *class_getInstanceVariable(Class cls, const char *name);
 struct Ivar *class_getClassVariable(Class cls, const char *name);
 
 bool class_addIvar(Class cls, const char *name, size_t size, uint8_t alignment, const char *types);
+
+struct Ivar *_Nonnull *class_copyIvarList(Class cls, unsigned int *out_count);
