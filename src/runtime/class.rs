@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 use super::{
     context::ClassKey, ivar::Ivar, method::Method, property::Property, protocol::Protocol,
 };
@@ -29,7 +31,7 @@ pub struct Class {
     // cxx_construct: Option<Imp>,
     // cxx_destruct: Option<Imp>,
     // first_sibling: Box<Class>,
-    pub(crate) name: String,
+    pub(crate) name: CString,
     pub ivars: Vec<Ivar>,
     pub methods: Vec<Method>,
     pub protocols: Vec<Protocol>,
@@ -40,11 +42,14 @@ pub struct Class {
 }
 
 impl Class {
-    pub fn new(name: &str, metaclass: ClassKey, superclass: Option<ClassKey>) -> Self {
+    pub fn new<T>(name: T, metaclass: ClassKey, superclass: Option<ClassKey>) -> Self
+    where
+        T: Into<Vec<u8>>,
+    {
         Self {
             metaclass,
             superclass,
-            name: name.to_string(),
+            name: CString::new(name).expect("should be utf8"),
             ivars: Vec::new(),
             methods: Vec::new(),
             protocols: Vec::new(),

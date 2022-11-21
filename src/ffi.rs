@@ -4,10 +4,13 @@ use crate::runtime::{
     class::{Class as ObjcClass, Flags},
     context::Context,
     ivar::Ivar,
+    method::Imp,
+    property::Property,
+    selector::Selector,
 };
 use std::{
     cell::LazyCell,
-    ffi::{c_char, c_uint, CStr, CString},
+    ffi::{c_char, c_uint, CStr},
     ptr::NonNull,
     sync::Mutex,
 };
@@ -22,9 +25,7 @@ static EMPTY_STRING: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecke
 pub extern "C" fn class_getName(cls: Class) -> *const c_char {
     match cls {
         None => EMPTY_STRING.as_ptr(),
-        Some(cls) => CString::new(unsafe { cls.as_ref().name.as_str() })
-            .expect("shouldn't have a null byte")
-            .into_raw(),
+        Some(cls) => unsafe { cls.as_ref() }.name.as_ptr(),
     }
 }
 
@@ -144,6 +145,74 @@ pub extern "C" fn class_copyIvarList(
         )
         .as_mut_ptr(),
     )
+}
+
+#[no_mangle]
+pub extern "C" fn class_getIvarLayout(_cls: Class) -> *const u8 {
+    unimplemented!("no garbage collection support yet")
+}
+
+#[no_mangle]
+pub extern "C" fn class_setIvarLayout(_cls: Class, _layout: *const u8) {
+    unimplemented!("no garbage collection support yet")
+}
+
+#[no_mangle]
+pub extern "C" fn class_weakGetIvarLayout(_cls: Class) -> *const u8 {
+    unimplemented!("no garbage collection support yet")
+}
+
+#[no_mangle]
+pub extern "C" fn class_weakSetIvarLayout(_cls: Class, _layout: *const u8) {
+    unimplemented!("no garbage collection support yet")
+}
+
+#[no_mangle]
+pub extern "C" fn class_getProperty(
+    _cls: Class,
+    _name: *const c_char,
+) -> Option<NonNull<Property>> {
+    unimplemented!()
+}
+
+// TODO: can we factor something out here to make this not duplicate [class_copyIvarList]?
+#[no_mangle]
+pub extern "C" fn class_copyPropertyList(
+    cls: Class,
+    out_count: *mut c_uint,
+) -> Option<NonNull<NonNull<Property>>> {
+    if !out_count.is_null() {
+        unsafe { *out_count = 0 };
+    }
+
+    let ref mut properties = unsafe { cls?.as_mut() }.properties;
+
+    if properties.is_empty() {
+        return None;
+    }
+
+    unsafe { *out_count = properties.len() as c_uint };
+
+    NonNull::new(
+        Box::into_raw(
+            properties
+                .iter_mut()
+                .map(|ivar| unsafe { NonNull::new_unchecked(ivar as *mut Property) })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        )
+        .as_mut_ptr(),
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn class_addMethod(
+    _cls: Class,
+    _name: Option<NonNull<Selector>>,
+    _imp: Option<NonNull<Imp>>,
+    _types: *const c_char,
+) -> bool {
+    unimplemented!()
 }
 
 #[cfg(test)]

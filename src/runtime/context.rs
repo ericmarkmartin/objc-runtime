@@ -5,12 +5,12 @@ new_key_type! {
 }
 
 use super::class::{Class, Flags};
-use std::collections::HashMap;
+use std::{collections::HashMap, ffi::CString};
 
 pub struct Context {
     pub(crate) classes: SlotMap<ClassKey, Class>,
-    pub(crate) registered_classes: HashMap<String, ClassKey>,
-    pub(crate) registered_metaclasses: HashMap<String, ClassKey>,
+    pub(crate) registered_classes: HashMap<CString, ClassKey>,
+    pub(crate) registered_metaclasses: HashMap<CString, ClassKey>,
 }
 
 impl Context {
@@ -26,10 +26,10 @@ impl Context {
     pub fn allocate_class_pair<'a>(
         context: &'a mut Self,
         superclass: Option<ClassKey>,
-        name: &str,
+        name: CString,
         _extra_bytes: usize,
     ) -> Option<ClassKey> {
-        if context.registered_classes.contains_key(name) {
+        if context.registered_classes.contains_key(&name) {
             return None;
         }
 
@@ -57,7 +57,7 @@ impl Context {
         }
 
         let metaclass = &mut context.classes[metaclass_index];
-        metaclass.name = name.to_string();
+        metaclass.name = name.clone();
         metaclass.info = Flags::USER_CREATED | Flags::META;
 
         // Set up the new class
@@ -65,7 +65,7 @@ impl Context {
         class.metaclass = metaclass_index;
         class.superclass = superclass;
 
-        class.name = name.to_string();
+        class.name = name;
         class.info = Flags::USER_CREATED;
 
         Some(class_index)
