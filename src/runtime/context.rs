@@ -7,13 +7,13 @@ new_key_type! {
 use super::class::{Class, Flags};
 use std::{collections::HashMap, ffi::CString};
 
-pub struct Context {
-    pub(crate) classes: SlotMap<ClassKey, Class>,
+pub struct Context<'a> {
+    pub(crate) classes: SlotMap<ClassKey, Class<'a>>,
     pub(crate) registered_classes: HashMap<CString, ClassKey>,
     pub(crate) registered_metaclasses: HashMap<CString, ClassKey>,
 }
 
-impl Context {
+impl Context<'_> {
     pub fn new() -> Self {
         Self {
             classes: SlotMap::with_key(),

@@ -4,7 +4,7 @@ use crate::runtime::{
     class::{Class as ObjcClass, Flags},
     context::Context,
     ivar::Ivar,
-    method::Imp,
+    method::{Imp, Method},
     property::Property,
     selector::Selector,
 };
@@ -17,7 +17,7 @@ use std::{
 
 static mut CONTEXT: LazyCell<Mutex<Context>> = LazyCell::new(|| Mutex::new(Context::new()));
 
-pub type Class = Option<NonNull<ObjcClass>>;
+pub type Class = Option<NonNull<ObjcClass<'static>>>;
 
 static EMPTY_STRING: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") };
 
@@ -168,11 +168,19 @@ pub extern "C" fn class_weakSetIvarLayout(_cls: Class, _layout: *const u8) {
 }
 
 #[no_mangle]
-pub extern "C" fn class_getProperty(
-    _cls: Class,
-    _name: *const c_char,
-) -> Option<NonNull<Property>> {
-    unimplemented!()
+pub extern "C" fn class_getProperty(cls: Class, name: *const c_char) -> Option<NonNull<Property>> {
+    let mut cls = cls?;
+
+    let name = unsafe { CStr::from_ptr(name) }
+        .to_str()
+        .expect("invalid utf8");
+
+    let property = unsafe { cls.as_mut() }
+        .properties
+        .iter_mut()
+        .find(|property| property.name == name)?;
+
+    NonNull::new(property as *mut _)
 }
 
 // TODO: can we factor something out here to make this not duplicate [class_copyIvarList]?
@@ -207,12 +215,24 @@ pub extern "C" fn class_copyPropertyList(
 
 #[no_mangle]
 pub extern "C" fn class_addMethod(
-    _cls: Class,
-    _name: Option<NonNull<Selector>>,
-    _imp: Option<NonNull<Imp>>,
-    _types: *const c_char,
+    cls: Class,
+    name: Option<NonNull<Selector>>,
+    imp: Option<NonNull<Imp>>,
+    types: *const c_char,
 ) -> bool {
-    unimplemented!()
+    let x: Option<()> = try {
+        let name = unsafe { name?.as_ref() };
+        let imp = unsafe { imp?.as_ref() };
+        let types = unsafe { CStr::from_ptr(types) }
+            .to_owned()
+            .into_string()
+            .expect("invalid utf8");
+
+        unsafe { cls?.as_mut() }
+            .methods
+            .push(Method::new(imp, name, types));
+    };
+    x.is_some()
 }
 
 #[cfg(test)]

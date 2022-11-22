@@ -22,7 +22,7 @@ pub trait Receiver {
 }
 
 #[derive(Default)]
-pub struct Class {
+pub struct Class<'a> {
     pub metaclass: ClassKey,
     pub superclass: Option<ClassKey>,
     // TODO: this should be not an i8
@@ -31,9 +31,12 @@ pub struct Class {
     // cxx_construct: Option<Imp>,
     // cxx_destruct: Option<Imp>,
     // first_sibling: Box<Class>,
+    /// We use a [CString] because in [class_getName] we need to present a
+    /// C-compatible (null-terminated) string and we need somewhere to store the
+    /// string data w/ the null byte.
     pub(crate) name: CString,
     pub ivars: Vec<Ivar>,
-    pub methods: Vec<Method>,
+    pub methods: Vec<Method<'a>>,
     pub protocols: Vec<Protocol>,
     // TODO: this should be not an i8
     pub reference_list: i8,
@@ -41,7 +44,7 @@ pub struct Class {
     pub info: Flags,
 }
 
-impl Class {
+impl Class<'_> {
     pub fn new<T>(name: T, metaclass: ClassKey, superclass: Option<ClassKey>) -> Self
     where
         T: Into<Vec<u8>>,

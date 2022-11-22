@@ -41,8 +41,8 @@ const uint8_t *class_weakGetIvarLayout(Class _cls);
 
 void class_weakSetIvarLayout(Class _cls, const uint8_t *_layout);
 
-struct Property *class_getProperty(Class _cls, const char *_name);
+struct Property *class_getProperty(Class cls, const char *name);
 
 struct Property *_Nonnull *class_copyPropertyList(Class cls, unsigned int *out_count);
 
-bool class_addMethod(Class _cls, struct Selector *_name, Imp *_imp, const char *_types);
+bool class_addMethod(Class cls, struct Selector *name, Imp *imp, const char *types);

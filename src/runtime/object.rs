@@ -1,7 +1,7 @@
 use super::class::Class;
 use std::rc::Weak;
 
-pub struct Object {
+pub struct Object<'a> {
     /// Pointer to this object's class.
-    isa: Weak<Class>,
+    isa: Weak<Class<'a>>,
 }
