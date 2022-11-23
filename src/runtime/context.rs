@@ -4,21 +4,32 @@ new_key_type! {
     pub struct ClassKey;
 }
 
-use super::class::{Class, Flags};
+new_key_type! {
+    pub struct SelectorKey;
+}
+
+use super::{
+    class::{Class, Flags},
+    selector::{Selector, SelectorInfo},
+};
 use std::{collections::HashMap, ffi::CString};
 
 pub struct Context<'a> {
     pub(crate) classes: SlotMap<ClassKey, Class<'a>>,
+    pub(crate) selectors: SlotMap<SelectorKey, Selector>,
     pub(crate) registered_classes: HashMap<CString, ClassKey>,
     pub(crate) registered_metaclasses: HashMap<CString, ClassKey>,
+    pub(crate) selectors_by_name: HashMap<SelectorInfo, SelectorKey>,
 }
 
 impl Context<'_> {
     pub fn new() -> Self {
         Self {
             classes: SlotMap::with_key(),
+            selectors: SlotMap::with_key(),
             registered_classes: HashMap::new(),
             registered_metaclasses: HashMap::new(),
+            selectors_by_name: HashMap::new(),
         }
     }
 
@@ -69,5 +80,19 @@ impl Context<'_> {
         class.info = Flags::USER_CREATED;
 
         Some(class_index)
+    }
+
+    pub fn allocate_selector(&mut self, name: String) -> SelectorKey {
+        // If an identical selector is already registered, return it.
+        let selector_info = SelectorInfo::new(name);
+        *self
+            .selectors_by_name
+            .entry(selector_info)
+            .or_insert_with_key(|selector_info| {
+                self.selectors.insert_with_key(|index| Selector {
+                    selector_info: selector_info.clone(),
+                    index,
+                })
+            })
     }
 }
