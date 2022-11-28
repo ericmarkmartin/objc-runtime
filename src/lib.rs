@@ -13,17 +13,4 @@ mod tests {
         let result = 2 + 2;
         assert_eq!(result, 4);
     }
-
-    #[test]
-    fn size_of_option_classkey() {
-        assert_eq!(
-            std::mem::size_of::<super::runtime::context::ClassKey>(),
-            std::mem::size_of::<
-                Result<
-                    super::runtime::context::ClassKey,
-                    (super::runtime::context::ClassKey, bool),
-                >,
-            >(),
-        )
-    }
 }
