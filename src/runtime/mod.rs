@@ -1,6 +1,7 @@
 pub mod class;
 pub mod context;
 pub mod ivar;
+pub mod message;
 pub mod method;
 pub mod object;
 pub mod property;

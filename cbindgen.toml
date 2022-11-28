@@ -1,4 +1,7 @@
 language = "C"
 
+[export.rename]
+"Receiver" = "objc_object"
+
 [ptr]
 non_null_attribute = "_Nonnull"

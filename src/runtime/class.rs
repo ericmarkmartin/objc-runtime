@@ -1,7 +1,8 @@
 use std::ffi::CString;
 
 use super::{
-    context::ClassKey, ivar::Ivar, method::Method, property::Property, protocol::Protocol,
+    context::ClassKey, ivar::Ivar, message::Repr, method::Method, property::Property,
+    protocol::Protocol,
 };
 
 bitflags::bitflags! {
@@ -17,13 +18,8 @@ impl Default for Flags {
     }
 }
 
-pub trait Receiver {
-    fn is_a(&self) -> Option<&dyn Receiver>;
-}
-
 #[derive(Default)]
-pub struct Class<'a> {
-    pub metaclass: ClassKey,
+pub struct ClassData<'a> {
     pub superclass: Option<ClassKey>,
     // TODO: this should be not an i8
     // dispatch_table: i8,
@@ -35,6 +31,7 @@ pub struct Class<'a> {
     /// C-compatible (null-terminated) string and we need somewhere to store the
     /// string data w/ the null byte.
     pub(crate) name: CString,
+    pub(crate) index: ClassKey,
     pub ivars: Vec<Ivar>,
     pub methods: Vec<Method<'a>>,
     pub protocols: Vec<Protocol>,
@@ -44,24 +41,7 @@ pub struct Class<'a> {
     pub info: Flags,
 }
 
-impl Class<'_> {
-    pub fn new<T>(name: T, metaclass: ClassKey, superclass: Option<ClassKey>) -> Self
-    where
-        T: Into<Vec<u8>>,
-    {
-        Self {
-            metaclass,
-            superclass,
-            name: CString::new(name).expect("should be utf8"),
-            ivars: Vec::new(),
-            methods: Vec::new(),
-            protocols: Vec::new(),
-            reference_list: 0,
-            properties: Vec::new(),
-            info: Flags::default(),
-        }
-    }
-
+impl Repr<ClassData<'_>> {
     fn is_registered(&self) -> bool {
         // TODO: implement
         return true;

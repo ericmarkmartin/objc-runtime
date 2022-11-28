@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct Class Class;
-
 typedef struct Ivar Ivar;
 
 typedef struct Object Object;
@@ -14,6 +12,18 @@ typedef struct Property Property;
 typedef struct Selector Selector;
 
 typedef struct Vec______Object Vec______Object;
+
+typedef ClassKey objc_object;
+
+typedef struct Repr_ObjcClass {
+  /**
+   * Pointer to this object's class.
+   */
+  objc_object is_a;
+  ObjcClass data;
+} Repr_ObjcClass;
+
+typedef struct Repr_ObjcClass *Class;
 
 typedef void (*Imp)(const struct Object*_Nonnull , const struct Selector*_Nonnull , struct Vec______Object);
 
@@ -46,3 +56,7 @@ struct Property *class_getProperty(Class cls, const char *name);
 struct Property *_Nonnull *class_copyPropertyList(Class cls, unsigned int *out_count);
 
 bool class_addMethod(Class cls, struct Selector *name, Imp *imp, const char *types);
+
+Class objc_allocateClassPair(Class superclass, const char *name, size_t extra_bytes);
+
+struct Selector *sel_registerName(const char *name);

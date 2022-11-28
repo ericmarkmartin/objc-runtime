@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 use crate::runtime::{
-    class::{Class as ObjcClass, Flags},
+    class::{ClassData as ObjcClass, Flags},
     context::Context,
     ivar::Ivar,
+    message::{Receiver, Repr},
     method::{Imp, Method},
     property::Property,
     selector::Selector,
@@ -11,15 +13,23 @@ use crate::runtime::{
 use std::{
     cell::LazyCell,
     ffi::{c_char, c_uint, CStr},
+    ops::Index,
     ptr::NonNull,
     sync::Mutex,
 };
 
 static mut CONTEXT: LazyCell<Mutex<Context>> = LazyCell::new(|| Mutex::new(Context::new()));
 
-pub type Class = Option<NonNull<ObjcClass<'static>>>;
+pub type Class = Option<NonNull<Repr<ObjcClass<'static>>>>;
+pub type SEL = Option<NonNull<Selector>>;
+
+pub type id = Option<NonNull<Receiver>>;
+
+pub type IMP = Option<NonNull<Imp>>;
 
 static EMPTY_STRING: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") };
+
+// TODO: null-check name pointers
 
 #[no_mangle]
 pub extern "C" fn class_getName(cls: Class) -> *const c_char {
@@ -81,7 +91,7 @@ pub extern "C" fn class_getClassVariable(cls: Class, name: *const c_char) -> Opt
         .expect("invalid utf8");
 
     let mut context = unsafe { CONTEXT.lock().expect("poisoned mutex") };
-    context.classes[unsafe { cls?.as_ref() }.metaclass]
+    context.classes[unsafe { cls?.as_ref() }.is_a.0]
         .ivars
         .iter_mut()
         .find_map(|ivar| {
@@ -222,7 +232,7 @@ pub extern "C" fn class_addMethod(
 ) -> bool {
     let x: Option<()> = try {
         let name = unsafe { name?.as_ref() };
-        let imp = unsafe { imp?.as_ref() };
+        let imp = unsafe { imp?.as_mut() };
         let types = unsafe { CStr::from_ptr(types) }
             .to_owned()
             .into_string()
@@ -233,6 +243,43 @@ pub extern "C" fn class_addMethod(
             .push(Method::new(imp, name, types));
     };
     x.is_some()
+}
+
+#[no_mangle]
+pub extern "C" fn objc_allocateClassPair(
+    superclass: Class,
+    name: *const c_char,
+    extra_bytes: libc::size_t,
+) -> Class {
+    let name = unsafe { CStr::from_ptr(name) }.to_owned();
+    let superclass = superclass.map(|superclass| unsafe { superclass.as_ref() }.index);
+    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
+
+    context
+        .allocate_class_pair(superclass, name, extra_bytes)
+        .and_then(|class_key| NonNull::new(&mut context.classes[class_key] as *mut _))
+}
+
+#[no_mangle]
+pub extern "C" fn sel_registerName(name: *const c_char) -> Option<NonNull<Selector>> {
+    let name = unsafe { CStr::from_ptr(name) }
+        .to_owned()
+        .into_string()
+        .expect("invalid utf8");
+    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
+    let selector_key = context.allocate_selector(name);
+    NonNull::new(&mut context.selectors[selector_key] as *mut _)
+}
+
+pub extern "C" fn objc_msg_lookup(receiver: id, sel: SEL) -> IMP {
+    let receiver = unsafe { receiver?.as_ref() };
+    let sel = unsafe { sel?.as_ref() };
+    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
+    context.classes[receiver.0]
+        .methods
+        .iter_mut()
+        .find(|method| method.selector.index == sel.index)
+        .and_then(|method| NonNull::new(method.imp as *mut _))
 }
 
 #[cfg(test)]
