@@ -3,7 +3,7 @@ use super::{
     selector::{Selector, SEL},
 };
 
-pub type Imp = extern "C" fn(id, SEL, ...);
+pub type Imp = unsafe extern "C" fn(id, SEL, ...);
 
 pub struct Method<'a> {
     pub(crate) imp: &'a mut Imp,
