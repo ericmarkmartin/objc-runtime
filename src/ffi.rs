@@ -284,10 +284,14 @@ pub extern "C" fn objc_msg_lookup(receiver: id, sel: SEL) -> IMP {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::CString;
+
+    use slotmap::SlotMap;
+
     use super::*;
     #[test]
     fn test_class_copyIvarList() {
-        let mut objc_class = ObjcClass::default();
+        let mut objc_class = Repr::<ObjcClass>::default();
         let cls = NonNull::new(&mut objc_class as *mut _);
         let out_count = std::ptr::null::<c_uint>().cast_mut();
         let output = class_copyIvarList(cls, out_count);
