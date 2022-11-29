@@ -1,4 +1,5 @@
-pub struct Ivar {
+#[allow(non_camel_case_types)]
+pub struct objc_ivar {
     pub(crate) name: String,
     pub(crate) size: usize,
     pub(crate) alignment: u8,
@@ -12,7 +13,7 @@ enum _Ownership {
     Unsafe,
 }
 
-impl Ivar {
+impl objc_ivar {
     pub fn new(name: String, size: usize, alignment: u8, types: String) -> Self {
         Self {
             name,
@@ -22,3 +23,5 @@ impl Ivar {
         }
     }
 }
+
+pub type Ivar = Option<std::ptr::NonNull<objc_ivar>>;

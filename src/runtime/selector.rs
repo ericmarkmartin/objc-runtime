@@ -16,3 +16,5 @@ impl SelectorInfo {
         Self { name, types: None }
     }
 }
+
+pub type SEL = Option<std::ptr::NonNull<Selector>>;

@@ -1,6 +1,9 @@
-use super::{object::Object, selector::Selector};
+use super::{
+    message::id,
+    selector::{Selector, SEL},
+};
 
-pub type Imp = fn(&Object, &Selector, Vec<&Object>);
+pub type Imp = extern "C" fn(id, SEL, ...);
 
 pub struct Method<'a> {
     pub(crate) imp: &'a mut Imp,

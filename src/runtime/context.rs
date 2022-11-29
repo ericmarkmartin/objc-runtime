@@ -9,21 +9,20 @@ new_key_type! {
 }
 
 use super::{
-    class::{ClassData, Flags},
-    message::{Receiver, Repr},
+    class::{objc_class, ClassData, Flags},
     selector::{Selector, SelectorInfo},
 };
 use std::{collections::HashMap, ffi::CString};
 
-pub struct Context<'a> {
-    pub(crate) classes: SlotMap<ClassKey, Repr<ClassData<'a>>>,
+pub struct Context {
+    pub(crate) classes: SlotMap<ClassKey, objc_class>,
     pub(crate) selectors: SlotMap<SelectorKey, Selector>,
     pub(crate) registered_classes: HashMap<CString, ClassKey>,
     pub(crate) registered_metaclasses: HashMap<CString, ClassKey>,
     pub(crate) selectors_by_name: HashMap<SelectorInfo, SelectorKey>,
 }
 
-impl Context<'_> {
+impl Context {
     pub fn new() -> Self {
         Self {
             classes: SlotMap::with_key(),
@@ -45,30 +44,33 @@ impl Context<'_> {
             return None;
         }
 
-        let class_index = self.classes.insert_with_key(|index| Repr {
-            is_a: Default::default(),
-            data: ClassData {
-                superclass,
-                index,
-                ..Default::default()
-            },
+        let class_index = self.classes.insert_with_key(|index| {
+            objc_class::new(
+                Default::default(),
+                ClassData {
+                    superclass,
+                    index,
+                    ..Default::default()
+                },
+            )
         });
-        let metaclass_index = self.classes.insert(Repr::<ClassData>::default());
+
+        let metaclass_index = self.classes.insert(objc_class::default());
 
         match superclass {
             // Metaclasses of root classes are precious little flowers and work a
             // little differently
             None => {
                 let metaclass = &mut self.classes[metaclass_index];
-                metaclass.is_a = Receiver(metaclass_index);
+                metaclass.set__is_a(metaclass_index);
                 metaclass.superclass = Some(class_index);
             }
             Some(superclass_index) => {
                 // TODO: do the superclass' need to be registered?
-                let super_meta = self.classes.get(superclass_index)?.is_a;
+                let super_meta = self.classes.get(superclass_index)?.is_a();
                 let metaclass = &mut self.classes[metaclass_index];
-                metaclass.is_a = super_meta;
-                metaclass.superclass = Some(super_meta.0);
+                metaclass.set__is_a(super_meta);
+                metaclass.superclass = Some(super_meta);
             }
         }
 
@@ -78,7 +80,7 @@ impl Context<'_> {
 
         // Set up the new class
         let class = &mut self.classes[class_index];
-        class.is_a = Receiver(metaclass_index);
+        class.set__is_a(metaclass_index);
         class.superclass = superclass;
 
         class.name = name;

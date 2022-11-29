@@ -3,7 +3,7 @@
 #![feature(slice_ptr_get)]
 #![feature(try_blocks)]
 pub mod ffi;
-pub mod runtime;
+mod runtime;
 
 #[cfg(test)]
 mod tests {
