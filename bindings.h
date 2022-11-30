@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct Option_objc_imp Option_objc_imp;
+
 typedef struct Property Property;
 
 typedef struct Selector Selector;
@@ -15,15 +17,9 @@ typedef objc_class *Class;
 
 typedef struct objc_ivar *Ivar;
 
-typedef ClassKey Receiver;
-
-typedef Receiver objc_object;
-
-typedef objc_object *id;
-
 typedef struct Selector *SEL;
 
-typedef void (*Imp)(id, SEL);
+typedef struct Option_objc_imp IMP;
 
 const char *class_getName(Class cls);
 
@@ -53,7 +49,7 @@ struct Property *class_getProperty(Class cls, const char *name);
 
 struct Property *_Nonnull *class_copyPropertyList(Class cls, unsigned int *out_count);
 
-bool class_addMethod(Class cls, struct Selector *name, Imp *imp, const char *types);
+bool class_addMethod(Class cls, SEL name, IMP imp, const char *types);
 
 Class objc_allocateClassPair(Class superclass, const char *name, size_t extra_bytes);
 

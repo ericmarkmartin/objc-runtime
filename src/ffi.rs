@@ -5,7 +5,7 @@ use super::runtime::{
     context::Context,
     id,
     ivar::{objc_ivar, Ivar},
-    method::{Imp, Method},
+    method::{Method, IMP},
     property::Property,
     selector::Selector,
     Class, SEL,
@@ -18,8 +18,6 @@ use std::{
 };
 
 static mut CONTEXT: LazyCell<Mutex<Context>> = LazyCell::new(|| Mutex::new(Context::new()));
-
-pub type IMP = Option<NonNull<Imp>>;
 
 static EMPTY_STRING: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") };
 
@@ -215,23 +213,17 @@ pub extern "C" fn class_copyPropertyList(
 }
 
 #[no_mangle]
-pub extern "C" fn class_addMethod(
-    cls: Class,
-    name: Option<NonNull<Selector>>,
-    imp: Option<NonNull<Imp>>,
-    types: *const c_char,
-) -> bool {
+pub extern "C" fn class_addMethod(cls: Class, name: SEL, imp: IMP, types: *const c_char) -> bool {
     let x: Option<()> = try {
         let name = unsafe { name?.as_ref() };
-        let imp = unsafe { imp?.as_mut() };
+        let imp = imp?;
+        let cls = unsafe { cls?.as_mut() };
         let types = unsafe { CStr::from_ptr(types) }
             .to_owned()
             .into_string()
             .expect("invalid utf8");
 
-        unsafe { cls?.as_mut() }
-            .methods
-            .push(Method::new(imp, name, types));
+        cls.methods.push(Method::new(imp, name, types));
     };
     x.is_some()
 }
@@ -269,8 +261,7 @@ pub extern "C" fn objc_msg_lookup(receiver: id, sel: SEL) -> IMP {
     context.classes[**receiver]
         .methods
         .iter_mut()
-        .find(|method| method.selector.index == sel.index)
-        .and_then(|method| NonNull::new(method.imp as *mut _))
+        .find_map(|method| (method.selector.index == sel.index).then_some(method.imp))
 }
 
 #[cfg(test)]
