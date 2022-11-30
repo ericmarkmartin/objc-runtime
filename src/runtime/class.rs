@@ -1,7 +1,7 @@
-use std::ffi::CString;
+use std::{ffi::CString, ptr::NonNull};
 
 use super::{
-    context::ClassKey, ivar::objc_ivar, message::Repr, method::Method, property::Property,
+    context::ClassKey, id, ivar::objc_ivar, message::Repr, method::Method, property::Property,
     protocol::Protocol,
 };
 

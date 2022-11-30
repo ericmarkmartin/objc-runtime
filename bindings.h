@@ -21,6 +21,12 @@ typedef struct Selector *SEL;
 
 typedef struct Option_objc_imp IMP;
 
+typedef ClassKey Receiver;
+
+typedef Receiver objc_object;
+
+typedef objc_object *id;
+
 const char *class_getName(Class cls);
 
 Class class_getSuperClass(Class cls);
@@ -52,5 +58,9 @@ struct Property *_Nonnull *class_copyPropertyList(Class cls, unsigned int *out_c
 bool class_addMethod(Class cls, SEL name, IMP imp, const char *types);
 
 Class objc_allocateClassPair(Class superclass, const char *name, size_t extra_bytes);
+
+void objc_registerClassPair(Class cls);
+
+id objc_getMetaClass(const char *name);
 
 struct Selector *sel_registerName(const char *name);

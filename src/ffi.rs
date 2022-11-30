@@ -244,6 +244,29 @@ pub extern "C" fn objc_allocateClassPair(
 }
 
 #[no_mangle]
+pub extern "C" fn objc_registerClassPair(cls: Class) {
+    match cls {
+        None => (),
+        Some(cls) => {
+            let cls = unsafe { cls.as_ref() };
+            unsafe { CONTEXT.lock() }
+                .expect("poisoned mutex")
+                .registered_classes
+                .insert(cls.name.clone(), cls.index);
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn objc_getMetaClass(name: *const c_char) -> id {
+    let name = unsafe { CStr::from_ptr(name) };
+    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
+    let class_key = context.registered_classes.get(name)?;
+    let metaclass_key = context.classes[*class_key].is_a();
+    NonNull::new(&mut context.classes[metaclass_key] as *mut _).map(NonNull::cast)
+}
+
+#[no_mangle]
 pub extern "C" fn sel_registerName(name: *const c_char) -> Option<NonNull<Selector>> {
     let name = unsafe { CStr::from_ptr(name) }
         .to_owned()
@@ -269,19 +292,20 @@ mod tests {
 
     use std::ffi::CString;
 
+    use serial_test::serial;
+
     use super::*;
     #[test]
+    #[serial]
     fn test_class_copyIvarList() {
         let out_count = std::ptr::null::<c_uint>().cast_mut();
         let output = class_copyIvarList(None, out_count);
         assert!(output.is_none());
-        assert!(out_count.is_null());
 
         let name = CString::new("foobar").expect("valid utf8");
         let cls = objc_allocateClassPair(None, name.as_ptr(), 0);
         let output = class_copyIvarList(cls, out_count);
         assert!(output.is_none());
-        assert!(out_count.is_null());
 
         // we won't change [cls] at all, but now that we're supplying a pointer,
         // we should get zero back
@@ -299,15 +323,42 @@ mod tests {
         class_addIvar(cls, ivar_name.as_ptr(), 0, 0, EMPTY_STRING.as_ptr());
 
         let new_output = class_copyIvarList(cls, &mut out_count as *mut _);
-        // assert!(new_output.is_some());
-        // assert_eq!(
-        //     unsafe { new_output.unwrap().as_ref().as_ptr() } as *const _,
-        //     &objc_class.ivars[0] as *const _
-        // );
+        assert!(new_output.is_some());
         assert_eq!(out_count, 1);
 
         // the caller takes ownership of the returned pointers, so let's clean
         // up
         unsafe { Box::from_raw(new_output.unwrap().as_ptr()) };
+    }
+
+    #[test]
+    #[serial]
+    fn test_send_message() {
+        let cls_name = CString::new("foobar2").expect("valid utf8");
+        let cls = objc_allocateClassPair(None, cls_name.as_ptr(), 0);
+
+        objc_registerClassPair(cls);
+
+        // TODO: we should expose functions for these casts
+        let metaclass: Class = objc_getMetaClass(cls_name.as_ptr()).map(NonNull::cast);
+
+        let sel_name = CString::new("fizzbuzz").expect("valid utf8");
+        let sel = sel_registerName(sel_name.as_ptr());
+
+        unsafe extern "C" fn imp(self_: id, _cmd: SEL, ...) -> id {
+            // TODO: do something with [_cmd] to make sure we're passing it correctly.
+            self_
+        }
+
+        // TODO: types should actually be something
+        let types = EMPTY_STRING.as_ptr();
+
+        assert!(class_addMethod(metaclass, sel, Some(imp), types));
+
+        let id = cls.map(NonNull::cast);
+
+        let imp = objc_msg_lookup(id, sel).expect("should be a real function");
+
+        assert_eq!(id, unsafe { imp(id, sel) });
     }
 }

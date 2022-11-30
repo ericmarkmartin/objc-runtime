@@ -71,3 +71,11 @@ impl<T: Default> Default for Repr<T> {
 type objc_object = Receiver;
 
 pub type id = Option<std::ptr::NonNull<objc_object>>;
+
+// TODO: we should have
+// ```
+// impl From<Class> for id {
+//   ...
+// }
+// ```
+// here but we can't until we make these tuple structs

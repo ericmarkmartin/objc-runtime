@@ -3,7 +3,7 @@ use super::{
     selector::{Selector, SEL},
 };
 
-pub type objc_imp = unsafe extern "C" fn(id, SEL, ...);
+pub type objc_imp = unsafe extern "C" fn(id, SEL, ...) -> id;
 pub type IMP = Option<objc_imp>;
 
 pub struct Method<'a> {

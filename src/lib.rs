@@ -2,6 +2,7 @@
 #![feature(const_cstr_methods)]
 #![feature(slice_ptr_get)]
 #![feature(try_blocks)]
+#![feature(c_variadic)]
 pub mod ffi;
 mod runtime;
 
