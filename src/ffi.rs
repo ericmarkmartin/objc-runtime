@@ -258,6 +258,12 @@ pub extern "C" fn objc_registerClassPair(cls: Class) {
     }
 }
 
+// TODO: match casing on (e.g.) [extra_bytes]
+#[no_mangle]
+pub extern "C" fn class_createInstance(cls: Class, extra_bytes: libc::size_t) -> id {
+    None
+}
+
 #[no_mangle]
 pub extern "C" fn objc_getMetaClass(name: *const c_char) -> id {
     let name = unsafe { CStr::from_ptr(name) };
@@ -284,7 +290,7 @@ pub extern "C" fn objc_msg_lookup(receiver: id, sel: SEL) -> IMP {
     CONTEXT.write().expect("poisoned rwlock").classes[**receiver]
         .methods
         .iter_mut()
-        .find_map(|method| (method.selector.index == sel.index).then_some(method.imp))
+        .find_map(|method| (method.selector == sel.index).then_some(method.imp))
 }
 
 #[cfg(test)]

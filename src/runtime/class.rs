@@ -20,7 +20,7 @@ impl Default for Flags {
 
 /// cbindgen:ignore
 #[derive(Default)]
-pub struct ClassData<'a> {
+pub struct ClassData {
     pub superclass: Option<ClassKey>,
     // TODO: this should be not an i8
     // dispatch_table: i8,
@@ -34,7 +34,7 @@ pub struct ClassData<'a> {
     pub(crate) name: CString,
     pub(crate) index: ClassKey,
     pub ivars: Vec<objc_ivar>,
-    pub methods: Vec<Method<'a>>,
+    pub methods: Vec<Method>,
     pub protocols: Vec<Protocol>,
     // TODO: this should be not an i8
     pub reference_list: i8,
@@ -45,10 +45,10 @@ pub struct ClassData<'a> {
 #[allow(non_camel_case_types)]
 #[repr(transparent)]
 #[derive(Default)]
-pub struct objc_class(Repr<ClassData<'static>>);
+pub struct objc_class(Repr<ClassData>);
 
 impl std::ops::Deref for objc_class {
-    type Target = Repr<ClassData<'static>>;
+    type Target = Repr<ClassData>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -62,7 +62,7 @@ impl std::ops::DerefMut for objc_class {
 }
 
 impl objc_class {
-    pub fn new(class_key: ClassKey, class_data: ClassData<'static>) -> Self {
+    pub fn new(class_key: ClassKey, class_data: ClassData) -> Self {
         Self(Repr::new(class_key, class_data))
     }
 
