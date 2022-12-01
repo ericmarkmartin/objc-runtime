@@ -1,7 +1,15 @@
 use std::{ffi::CString, ptr::NonNull};
 
+use aligned_box::AlignedBox;
+
 use super::{
-    context::ClassKey, id, ivar::objc_ivar, message::Repr, method::Method, property::Property,
+    context::ClassKey,
+    id,
+    ivar::objc_ivar,
+    message::Repr,
+    method::Method,
+    object::{objc_object, ObjectData},
+    property::Property,
     protocol::Protocol,
 };
 
@@ -93,6 +101,31 @@ impl objc_class {
 
         self.ivars.push(ivar);
         true
+    }
+
+    pub fn create_object(&self) -> objc_object {
+        let object_data = ObjectData {
+            ivars: self
+                .ivars
+                .iter()
+                .map(
+                    |objc_ivar {
+                         name,
+                         size,
+                         alignment,
+                         ..
+                     }| {
+                        (
+                            name.clone(),
+                            AlignedBox::slice_from_default(alignment.to_uint(), *size)
+                                .expect("invalid alignment"),
+                        )
+                    },
+                )
+                .collect(),
+        };
+
+        objc_object::new(self.is_a(), object_data)
     }
 }
 

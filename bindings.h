@@ -11,6 +11,8 @@ typedef struct Selector Selector;
 
 typedef struct objc_ivar objc_ivar;
 
+typedef struct objc_object objc_object;
+
 typedef Repr<ClassData> objc_class;
 
 typedef objc_class *Class;
@@ -20,10 +22,6 @@ typedef struct objc_ivar *Ivar;
 typedef struct Selector *SEL;
 
 typedef struct Option_objc_imp IMP;
-
-typedef ClassKey Receiver;
-
-typedef Receiver objc_object;
 
 typedef objc_object *id;
 

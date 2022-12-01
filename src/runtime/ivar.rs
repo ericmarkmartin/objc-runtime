@@ -1,8 +1,10 @@
+use pow_of_2::PowOf2;
+
 #[allow(non_camel_case_types)]
 pub struct objc_ivar {
     pub(crate) name: String,
     pub(crate) size: usize,
-    pub(crate) alignment: u8,
+    pub(crate) alignment: PowOf2<usize>,
     pub(crate) types: String,
 }
 
@@ -18,7 +20,7 @@ impl objc_ivar {
         Self {
             name,
             size,
-            alignment,
+            alignment: PowOf2::from_exp(alignment),
             types,
         }
     }
