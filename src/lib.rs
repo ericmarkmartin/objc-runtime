@@ -1,4 +1,3 @@
-#![feature(once_cell)]
 #![feature(const_cstr_methods)]
 #![feature(slice_ptr_get)]
 #![feature(try_blocks)]

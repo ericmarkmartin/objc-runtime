@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+use once_cell::sync::Lazy;
+
 use super::runtime::{
     context::Context,
     id,
@@ -11,13 +13,12 @@ use super::runtime::{
     Class, SEL,
 };
 use std::{
-    cell::LazyCell,
     ffi::{c_char, c_uint, CStr},
     ptr::NonNull,
-    sync::Mutex,
+    sync::RwLock,
 };
 
-static mut CONTEXT: LazyCell<Mutex<Context>> = LazyCell::new(|| Mutex::new(Context::new()));
+static CONTEXT: Lazy<RwLock<Context>> = Lazy::new(|| RwLock::new(Context::new()));
 
 static EMPTY_STRING: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") };
 
@@ -34,7 +35,7 @@ pub extern "C" fn class_getName(cls: Class) -> *const c_char {
 #[no_mangle]
 pub extern "C" fn class_getSuperClass(cls: Class) -> Class {
     let superclass = unsafe { cls?.as_ref() }.superclass?;
-    NonNull::new(unsafe { &mut CONTEXT.lock().expect("poisoned mutex").classes[superclass] })
+    NonNull::new(&mut CONTEXT.write().expect("poisoned rwlock").classes[superclass])
 }
 
 #[no_mangle]
@@ -79,8 +80,7 @@ pub extern "C" fn class_getClassVariable(cls: Class, name: *const c_char) -> Iva
         .into_string()
         .expect("invalid utf8");
 
-    let mut context = unsafe { CONTEXT.lock().expect("poisoned mutex") };
-    context.classes[unsafe { cls?.as_ref() }.is_a()]
+    CONTEXT.write().expect("poisoned rwlock").classes[unsafe { cls?.as_ref() }.is_a()]
         .ivars
         .iter_mut()
         .find_map(|ivar| {
@@ -236,8 +236,8 @@ pub extern "C" fn objc_allocateClassPair(
 ) -> Class {
     let name = unsafe { CStr::from_ptr(name) }.to_owned();
     let superclass = superclass.map(|superclass| unsafe { superclass.as_ref() }.index);
-    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
 
+    let mut context = CONTEXT.write().expect("poisoned rwlock");
     context
         .allocate_class_pair(superclass, name, extra_bytes)
         .and_then(|class_key| NonNull::new(&mut context.classes[class_key] as *mut _))
@@ -249,8 +249,9 @@ pub extern "C" fn objc_registerClassPair(cls: Class) {
         None => (),
         Some(cls) => {
             let cls = unsafe { cls.as_ref() };
-            unsafe { CONTEXT.lock() }
-                .expect("poisoned mutex")
+            CONTEXT
+                .write()
+                .expect("poisoned rwlock")
                 .registered_classes
                 .insert(cls.name.clone(), cls.index);
         }
@@ -260,7 +261,7 @@ pub extern "C" fn objc_registerClassPair(cls: Class) {
 #[no_mangle]
 pub extern "C" fn objc_getMetaClass(name: *const c_char) -> id {
     let name = unsafe { CStr::from_ptr(name) };
-    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
+    let mut context = CONTEXT.write().expect("poisoned rwlock");
     let class_key = context.registered_classes.get(name)?;
     let metaclass_key = context.classes[*class_key].is_a();
     NonNull::new(&mut context.classes[metaclass_key] as *mut _).map(NonNull::cast)
@@ -272,7 +273,7 @@ pub extern "C" fn sel_registerName(name: *const c_char) -> Option<NonNull<Select
         .to_owned()
         .into_string()
         .expect("invalid utf8");
-    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
+    let mut context = CONTEXT.write().expect("poisoned rwlock");
     let selector_key = context.allocate_selector(name);
     NonNull::new(&mut context.selectors[selector_key] as *mut _)
 }
@@ -280,8 +281,7 @@ pub extern "C" fn sel_registerName(name: *const c_char) -> Option<NonNull<Select
 pub extern "C" fn objc_msg_lookup(receiver: id, sel: SEL) -> IMP {
     let receiver = unsafe { receiver?.as_ref() };
     let sel = unsafe { sel?.as_ref() };
-    let mut context = unsafe { CONTEXT.lock() }.expect("poisoned mutex");
-    context.classes[**receiver]
+    CONTEXT.write().expect("poisoned rwlock").classes[**receiver]
         .methods
         .iter_mut()
         .find_map(|method| (method.selector.index == sel.index).then_some(method.imp))
@@ -292,11 +292,8 @@ mod tests {
 
     use std::ffi::CString;
 
-    use serial_test::serial;
-
     use super::*;
     #[test]
-    #[serial]
     fn test_class_copyIvarList() {
         let out_count = std::ptr::null::<c_uint>().cast_mut();
         let output = class_copyIvarList(None, out_count);
@@ -332,7 +329,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_send_message() {
         let cls_name = CString::new("foobar2").expect("valid utf8");
         let cls = objc_allocateClassPair(None, cls_name.as_ptr(), 0);
