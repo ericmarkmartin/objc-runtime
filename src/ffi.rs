@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 
 use libc::c_void;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 use super::runtime::{
     context::Context,
@@ -20,7 +20,7 @@ use std::{
     sync::RwLock,
 };
 
-static CONTEXT: Lazy<RwLock<Context>> = Lazy::new(|| RwLock::new(Context::new()));
+static CONTEXT: LazyLock<RwLock<Context>> = LazyLock::new(|| RwLock::new(Context::new()));
 
 static EMPTY_STRING: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") };
 
@@ -261,7 +261,6 @@ pub extern "C" fn objc_registerClassPair(cls: Class) {
 }
 
 // TODO: match casing on (e.g.) [extra_bytes]
-// what if the ivar has primitive type?
 #[no_mangle]
 pub extern "C" fn class_createInstance(cls: Class, _extra_bytes: libc::size_t) -> id {
     let object = unsafe { cls?.as_ref() }.create_object();
@@ -277,9 +276,10 @@ pub extern "C" fn object_getInstanceVariable(
     unimplemented!()
 }
 
+// what if the ivar has primitive type?
 #[no_mangle]
 pub extern "C" fn object_getIvar(obj: id, ivar: Ivar) -> id {
-    unsafe { obj?.cast::<objc_object>().as_ref() }.ivars[unsafe { ivar?.as_ref() }.name]
+    unsafe { obj?.cast::<objc_object>().as_ref() }.ivars[&unsafe { ivar?.as_ref() }.name]
 }
 
 #[no_mangle]
