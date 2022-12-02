@@ -260,8 +260,9 @@ pub extern "C" fn objc_registerClassPair(cls: Class) {
 
 // TODO: match casing on (e.g.) [extra_bytes]
 #[no_mangle]
-pub extern "C" fn class_createInstance(cls: Class, extra_bytes: libc::size_t) -> id {
-    None
+pub extern "C" fn class_createInstance(cls: Class, _extra_bytes: libc::size_t) -> id {
+    let object = unsafe { cls?.as_ref() }.create_object();
+    NonNull::new(Box::into_raw(Box::new(object))).map(NonNull::cast)
 }
 
 #[no_mangle]

@@ -59,7 +59,7 @@ Class objc_allocateClassPair(Class superclass, const char *name, size_t extra_by
 
 void objc_registerClassPair(Class cls);
 
-id class_createInstance(Class cls, size_t extra_bytes);
+id class_createInstance(Class cls, size_t _extra_bytes);
 
 id objc_getMetaClass(const char *name);
 
