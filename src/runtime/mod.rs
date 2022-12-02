@@ -14,4 +14,5 @@ pub use class::Class;
 pub use ivar::Ivar;
 pub use message::id;
 pub use method::{objc_imp, IMP};
+pub use object::objc_object;
 pub use selector::SEL;

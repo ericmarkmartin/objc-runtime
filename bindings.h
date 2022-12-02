@@ -11,8 +11,6 @@ typedef struct Selector Selector;
 
 typedef struct objc_ivar objc_ivar;
 
-typedef struct objc_object objc_object;
-
 typedef Repr<ClassData> objc_class;
 
 typedef objc_class *Class;
@@ -23,7 +21,9 @@ typedef struct Selector *SEL;
 
 typedef struct Option_objc_imp IMP;
 
-typedef objc_object *id;
+typedef ClassKey Receiver;
+
+typedef Receiver *id;
 
 const char *class_getName(Class cls);
 
@@ -60,6 +60,10 @@ Class objc_allocateClassPair(Class superclass, const char *name, size_t extra_by
 void objc_registerClassPair(Class cls);
 
 id class_createInstance(Class cls, size_t _extra_bytes);
+
+void object_getInstanceVariable(id obj, const char *name, void **out_value);
+
+id object_getIvar(id obj, Ivar ivar);
 
 id objc_getMetaClass(const char *name);
 

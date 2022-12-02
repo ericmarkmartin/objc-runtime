@@ -68,9 +68,7 @@ impl<T: Default> Default for Repr<T> {
 }
 
 #[allow(non_camel_case_types)]
-type objc_object = Receiver;
-
-pub type id = Option<std::ptr::NonNull<objc_object>>;
+pub type id = Option<std::ptr::NonNull<Receiver>>;
 
 // TODO: we should have
 // ```

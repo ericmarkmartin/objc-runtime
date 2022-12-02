@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+use libc::c_void;
 use once_cell::sync::Lazy;
 
 use super::runtime::{
@@ -8,6 +9,7 @@ use super::runtime::{
     id,
     ivar::{objc_ivar, Ivar},
     method::{Method, IMP},
+    object::objc_object,
     property::Property,
     selector::Selector,
     Class, SEL,
@@ -259,10 +261,25 @@ pub extern "C" fn objc_registerClassPair(cls: Class) {
 }
 
 // TODO: match casing on (e.g.) [extra_bytes]
+// what if the ivar has primitive type?
 #[no_mangle]
 pub extern "C" fn class_createInstance(cls: Class, _extra_bytes: libc::size_t) -> id {
     let object = unsafe { cls?.as_ref() }.create_object();
     NonNull::new(Box::into_raw(Box::new(object))).map(NonNull::cast)
+}
+
+#[no_mangle]
+pub extern "C" fn object_getInstanceVariable(
+    obj: id,
+    name: *const c_char,
+    out_value: *mut *mut c_void,
+) {
+    unimplemented!()
+}
+
+#[no_mangle]
+pub extern "C" fn object_getIvar(obj: id, ivar: Ivar) -> id {
+    unsafe { obj?.cast::<objc_object>().as_ref() }.ivars[unsafe { ivar?.as_ref() }.name]
 }
 
 #[no_mangle]
