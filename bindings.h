@@ -61,9 +61,11 @@ void objc_registerClassPair(Class cls);
 
 id class_createInstance(Class cls, size_t _extra_bytes);
 
-void object_getInstanceVariable(id obj, const char *name, void **out_value);
-
 id object_getIvar(id obj, Ivar ivar);
+
+void object_setIvar(id obj, Ivar ivar, id value);
+
+Ivar object_getInstanceVariable(id obj, const char *name, void **out_value);
 
 id objc_getMetaClass(const char *name);
 

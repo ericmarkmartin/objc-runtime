@@ -3,7 +3,7 @@
 
 use aligned_box::AlignedBox;
 use libc::c_void;
-use std::sync::LazyLock;
+use std::{ptr, sync::LazyLock};
 
 use super::runtime::{
     context::Context,
@@ -269,22 +269,56 @@ pub extern "C" fn class_createInstance(cls: Class, _extra_bytes: libc::size_t) -
 }
 
 #[no_mangle]
-pub extern "C" fn object_getInstanceVariable(
-    obj: id,
-    name: *const c_char,
-    out_value: *mut *mut c_void,
-) {
-    unimplemented!()
-}
-
-#[no_mangle]
 pub extern "C" fn object_getIvar(obj: id, ivar: Ivar) -> id {
     let ivar = unsafe { ivar?.as_ref() };
-    let aligned_box = &mut unsafe { obj?.cast::<objc_object>().as_mut() }
+    let aligned_box = unsafe { obj?.cast::<objc_object>().as_mut() }
         .ivars
         .get_mut(&ivar.name)
         .expect("ivar wasn't there");
     NonNull::new(aligned_box).map(NonNull::cast)
+}
+
+#[no_mangle]
+pub extern "C" fn object_setIvar(obj: id, ivar: Ivar, value: id) {
+    let x: Option<()> = try {
+        let ivar = unsafe { ivar?.as_ref() };
+        let aligned_box = unsafe { obj?.cast::<objc_object>().as_mut() }
+            .ivars
+            .get_mut(&ivar.name)
+            .expect("ivar wasn't there");
+
+        // TODO: is this okay
+        **unsafe { std::mem::transmute::<_, &mut AlignedBox<id>>(aligned_box) } = value;
+    };
+}
+
+#[no_mangle]
+pub extern "C" fn object_getInstanceVariable(
+    obj: id,
+    name: *const c_char,
+    out_value: *mut *mut c_void,
+) -> Ivar {
+    let ivar: Ivar = {
+        let obj = unsafe { obj?.as_ref() };
+        let name = unsafe { CStr::from_ptr(name) }
+            .to_owned()
+            .into_string()
+            .expect("invalid utf8");
+        NonNull::new(
+            CONTEXT.write().expect("poisoned rwlock").classes[**obj]
+                .ivars
+                .iter_mut()
+                .find(|objc_ivar { name: name_, .. }| &name == name_)?,
+        )
+    };
+
+    let ptr = match object_getIvar(obj, ivar) {
+        None => ptr::null_mut(),
+        Some(nonnull) => unsafe { nonnull.cast().as_mut() },
+    };
+
+    unsafe { *out_value = ptr };
+    ivar
 }
 
 #[no_mangle]
