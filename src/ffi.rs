@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+use aligned_box::AlignedBox;
 use libc::c_void;
 use std::sync::LazyLock;
 
@@ -276,10 +277,14 @@ pub extern "C" fn object_getInstanceVariable(
     unimplemented!()
 }
 
-// what if the ivar has primitive type?
 #[no_mangle]
 pub extern "C" fn object_getIvar(obj: id, ivar: Ivar) -> id {
-    unsafe { obj?.cast::<objc_object>().as_ref() }.ivars[&unsafe { ivar?.as_ref() }.name]
+    let ivar = unsafe { ivar?.as_ref() };
+    let aligned_box = &mut unsafe { obj?.cast::<objc_object>().as_mut() }
+        .ivars
+        .get_mut(&ivar.name)
+        .expect("ivar wasn't there");
+    NonNull::new(aligned_box).map(NonNull::cast)
 }
 
 #[no_mangle]
