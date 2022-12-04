@@ -3,6 +3,7 @@
 #![feature(slice_ptr_get)]
 #![feature(try_blocks)]
 #![feature(c_variadic)]
+#![feature(strict_provenance)]
 pub mod ffi;
 mod runtime;
 

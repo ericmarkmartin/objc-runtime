@@ -268,26 +268,24 @@ pub extern "C" fn class_createInstance(cls: Class, _extra_bytes: libc::size_t) -
     NonNull::new(Box::into_raw(Box::new(object))).map(NonNull::cast)
 }
 
+// TODO: think about how to do this with primitively-typed ivars.
 #[no_mangle]
 pub extern "C" fn object_getIvar(obj: id, ivar: Ivar) -> id {
     let ivar = unsafe { ivar?.as_ref() };
-    let aligned_box = unsafe { obj?.cast::<objc_object>().as_mut() }
-        .ivars
-        .get_mut(&ivar.name)
-        .expect("ivar wasn't there");
-    NonNull::new(aligned_box).map(NonNull::cast)
+    let aligned_box = &unsafe { obj?.cast::<objc_object>().as_mut() }.ivars[&ivar.name];
+
+    **unsafe { std::mem::transmute::<_, &AlignedBox<id>>(aligned_box) }
 }
 
 #[no_mangle]
 pub extern "C" fn object_setIvar(obj: id, ivar: Ivar, value: id) {
-    let x: Option<()> = try {
+    let _: Option<()> = try {
         let ivar = unsafe { ivar?.as_ref() };
         let aligned_box = unsafe { obj?.cast::<objc_object>().as_mut() }
             .ivars
             .get_mut(&ivar.name)
             .expect("ivar wasn't there");
 
-        // TODO: is this okay
         **unsafe { std::mem::transmute::<_, &mut AlignedBox<id>>(aligned_box) } = value;
     };
 }
@@ -419,5 +417,36 @@ mod tests {
         let imp = objc_msg_lookup(id, sel).expect("should be a real function");
 
         assert_eq!(id, unsafe { imp(id, sel) });
+    }
+
+    #[test]
+    fn test_get_set_ivar() {
+        let cls_name = CString::new("foobar3").expect("valid utf8");
+        let cls = objc_allocateClassPair(None, cls_name.as_ptr(), 0);
+
+        objc_registerClassPair(cls);
+
+        let ivar_name = CString::new("fizzbuzz").expect("valid utf8");
+        // TODO: fill in the types
+        class_addIvar(
+            cls,
+            ivar_name.as_ptr(),
+            std::mem::size_of::<id>(),
+            0,
+            EMPTY_STRING.as_ptr(),
+        );
+
+        let ivar = class_getInstanceVariable(cls, ivar_name.as_ptr());
+
+        let obj = class_createInstance(cls, 0);
+        let obj2 = class_createInstance(cls, 0);
+
+        assert!(object_getIvar(obj, ivar).is_none());
+
+        object_setIvar(obj, ivar, obj2);
+
+        let new_value = object_getIvar(obj, ivar);
+
+        assert_eq!(new_value, obj2);
     }
 }
