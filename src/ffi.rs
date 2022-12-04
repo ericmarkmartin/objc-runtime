@@ -9,6 +9,7 @@ use super::runtime::{
     context::Context,
     id,
     ivar::{objc_ivar, Ivar},
+    message::Receiver,
     method::{Method, IMP},
     object::objc_object,
     property::Property,
@@ -310,12 +311,38 @@ pub extern "C" fn object_getInstanceVariable(
         )
     };
 
-    let ptr = match object_getIvar(obj, ivar) {
-        None => ptr::null_mut(),
-        Some(nonnull) => unsafe { nonnull.cast().as_mut() },
+    unsafe {
+        *out_value = match object_getIvar(obj, ivar) {
+            None => ptr::null_mut(),
+            Some(nonnull) => nonnull.cast().as_mut(),
+        }
     };
 
-    unsafe { *out_value = ptr };
+    ivar
+}
+
+#[no_mangle]
+pub extern "C" fn object_setInstanceVariable(
+    obj: id,
+    name: *const c_char,
+    value: *mut c_void,
+) -> Ivar {
+    let ivar: Ivar = {
+        let obj = unsafe { obj?.as_ref() };
+        let name = unsafe { CStr::from_ptr(name) }
+            .to_owned()
+            .into_string()
+            .expect("invalid utf8");
+        NonNull::new(
+            CONTEXT.write().expect("poisoned rwlock").classes[**obj]
+                .ivars
+                .iter_mut()
+                .find(|objc_ivar { name: name_, .. }| &name == name_)?,
+        )
+    };
+
+    object_setIvar(obj, ivar, NonNull::new(value as *mut Receiver));
+
     ivar
 }
 
