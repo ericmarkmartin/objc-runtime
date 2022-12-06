@@ -273,9 +273,7 @@ pub extern "C" fn class_createInstance(cls: Class, _extra_bytes: libc::size_t) -
 #[no_mangle]
 pub extern "C" fn object_getIvar(obj: id, ivar: Ivar) -> id {
     let ivar = unsafe { ivar?.as_ref() };
-    let aligned_box = &unsafe { obj?.cast::<objc_object>().as_mut() }.ivars[&ivar.name];
-
-    **unsafe { std::mem::transmute::<_, &AlignedBox<id>>(aligned_box) }
+    *unsafe { obj?.cast::<objc_object>().as_mut() }.ivars[&ivar.name]
 }
 
 #[no_mangle]
@@ -287,7 +285,7 @@ pub extern "C" fn object_setIvar(obj: id, ivar: Ivar, value: id) {
             .get_mut(&ivar.name)
             .expect("ivar wasn't there");
 
-        **unsafe { std::mem::transmute::<_, &mut AlignedBox<id>>(aligned_box) } = value;
+        **aligned_box = value;
     };
 }
 

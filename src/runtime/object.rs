@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use aligned_box::AlignedBox;
 
 use super::context::ClassKey;
-use super::message::Repr;
+use super::message::{id, Repr};
 
 pub struct ObjectData {
-    pub(crate) ivars: HashMap<String, AlignedBox<[u8]>>,
+    pub(crate) ivars: HashMap<String, AlignedBox<id>>,
 }
 
 pub struct objc_object(Repr<ObjectData>);

@@ -111,14 +111,13 @@ impl objc_class {
                 .map(
                     |objc_ivar {
                          name,
-                         size,
+                         size: _,
                          alignment,
                          ..
                      }| {
                         (
                             name.clone(),
-                            AlignedBox::slice_from_default(alignment.to_uint(), *size)
-                                .expect("invalid alignment"),
+                            AlignedBox::new(alignment.to_uint(), None).expect("invalid alignment"),
                         )
                     },
                 )
