@@ -6,7 +6,7 @@ pub struct SelectorInfo {
     pub(crate) types: Option<String>,
 }
 
-pub struct Selector {
+pub struct objc_selector {
     pub(crate) index: SelectorKey,
     pub(crate) selector_info: SelectorInfo,
 }
@@ -17,4 +17,4 @@ impl SelectorInfo {
     }
 }
 
-pub type SEL = Option<std::ptr::NonNull<Selector>>;
+pub type SEL = Option<std::ptr::NonNull<objc_selector>>;

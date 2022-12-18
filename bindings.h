@@ -7,9 +7,9 @@ typedef struct Option_objc_imp Option_objc_imp;
 
 typedef struct Property Property;
 
-typedef struct Selector Selector;
-
 typedef struct objc_ivar objc_ivar;
+
+typedef struct objc_selector objc_selector;
 
 typedef Repr<ClassData> objc_class;
 
@@ -17,7 +17,7 @@ typedef objc_class *Class;
 
 typedef struct objc_ivar *Ivar;
 
-typedef struct Selector *SEL;
+typedef struct objc_selector *SEL;
 
 typedef struct Option_objc_imp IMP;
 
@@ -73,4 +73,4 @@ Ivar object_setInstanceVariable(id obj, const char *name, void *value);
 
 id objc_getMetaClass(const char *name);
 
-struct Selector *sel_registerName(const char *name);
+SEL sel_registerName(const char *name);

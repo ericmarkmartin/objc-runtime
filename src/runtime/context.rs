@@ -10,13 +10,13 @@ new_key_type! {
 
 use super::{
     class::{objc_class, ClassData, Flags},
-    selector::{Selector, SelectorInfo},
+    selector::{objc_selector, SelectorInfo},
 };
 use std::{collections::HashMap, ffi::CString};
 
 pub struct Context {
     pub(crate) classes: SlotMap<ClassKey, objc_class>,
-    pub(crate) selectors: SlotMap<SelectorKey, Selector>,
+    pub(crate) selectors: SlotMap<SelectorKey, objc_selector>,
     pub(crate) registered_classes: HashMap<CString, ClassKey>,
     pub(crate) registered_metaclasses: HashMap<CString, ClassKey>,
     pub(crate) selectors_by_name: HashMap<SelectorInfo, SelectorKey>,
@@ -97,7 +97,7 @@ impl Context {
             .selectors_by_name
             .entry(selector_info)
             .or_insert_with_key(|selector_info| {
-                self.selectors.insert_with_key(|index| Selector {
+                self.selectors.insert_with_key(|index| objc_selector {
                     selector_info: selector_info.clone(),
                     index,
                 })

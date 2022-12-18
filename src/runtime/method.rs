@@ -1,7 +1,7 @@
 use super::{
     context::SelectorKey,
     message::id,
-    selector::{Selector, SEL},
+    selector::{objc_selector, SEL},
 };
 
 pub type objc_imp = unsafe extern "C" fn(id, SEL, ...) -> id;
@@ -14,7 +14,7 @@ pub struct Method {
 }
 
 impl Method {
-    pub fn new(imp: objc_imp, selector: &Selector, types: String) -> Self {
+    pub fn new(imp: objc_imp, selector: &objc_selector, types: String) -> Self {
         Self {
             imp,
             selector: selector.index,

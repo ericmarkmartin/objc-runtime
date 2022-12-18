@@ -20,9 +20,9 @@ impl Deref for Receiver {
     }
 }
 
-/// cbindgen:ignore
 #[repr(C)]
 #[derive(Default)]
+/// cbindgen:ignore
 pub struct Repr<T: ?Sized> {
     /// Pointer to this object's class.
     is_a: Receiver,

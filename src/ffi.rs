@@ -12,7 +12,7 @@ use super::runtime::{
     method::{Method, IMP},
     object::objc_object,
     property::Property,
-    selector::Selector,
+    selector::objc_selector,
     Class, SEL,
 };
 use std::{
@@ -368,7 +368,7 @@ pub extern "C" fn objc_getMetaClass(name: *const c_char) -> id {
 }
 
 #[no_mangle]
-pub extern "C" fn sel_registerName(name: *const c_char) -> Option<NonNull<Selector>> {
+pub extern "C" fn sel_registerName(name: *const c_char) -> SEL {
     let name = unsafe { CStr::from_ptr(name) }
         .to_owned()
         .into_string()

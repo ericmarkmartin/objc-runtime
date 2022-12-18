@@ -1,9 +1,9 @@
-use super::selector::Selector;
+use super::selector::objc_selector;
 
 pub struct Property {
     pub(crate) name: String,
     attributes: String,
     type_: String,
-    getter: Selector,
-    setter: Selector,
+    getter: objc_selector,
+    setter: objc_selector,
 }
