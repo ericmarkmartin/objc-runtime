@@ -38,7 +38,7 @@ impl Context {
         &mut self,
         superclass: Option<ClassKey>,
         name: CString,
-        _extra_bytes: usize,
+        extra_bytes: usize,
     ) -> Option<ClassKey> {
         if self.registered_classes.contains_key(&name) {
             return None;
@@ -50,6 +50,7 @@ impl Context {
                 ClassData {
                     superclass,
                     index,
+                    extra_bytes,
                     ..Default::default()
                 },
             )

@@ -6,6 +6,7 @@ pub struct objc_ivar {
     pub(crate) size: usize,
     pub(crate) alignment: PowOf2<usize>,
     pub(crate) types: String,
+    pub(crate) offset: usize,
 }
 
 enum _Ownership {
@@ -22,6 +23,7 @@ impl objc_ivar {
             size,
             alignment: PowOf2::from_exp(alignment),
             types,
+            offset: 0,
         }
     }
 }

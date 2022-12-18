@@ -63,7 +63,13 @@ id class_createInstance(Class cls, size_t _extra_bytes);
 
 id object_getIvar(id obj, Ivar ivar);
 
+id object_getIvarV2(id obj, Ivar ivar);
+
+ptrdiff_t ivar_getOffset(Ivar ivar);
+
 void object_setIvar(id obj, Ivar ivar, id value);
+
+void object_setIvarV2(id obj, Ivar ivar, id value);
 
 Ivar object_getInstanceVariable(id obj, const char *name, void **out_value);
 

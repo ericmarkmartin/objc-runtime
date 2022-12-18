@@ -4,6 +4,7 @@
 #![feature(try_blocks)]
 #![feature(c_variadic)]
 #![feature(strict_provenance)]
+#![feature(allocator_api)]
 pub mod ffi;
 mod runtime;
 

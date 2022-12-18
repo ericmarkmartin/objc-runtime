@@ -1,4 +1,4 @@
-use std::{ffi::CString, ptr::NonNull};
+use std::{alloc::Layout, ffi::CString, ptr::NonNull};
 
 use aligned_box::AlignedBox;
 
@@ -6,9 +6,9 @@ use super::{
     context::ClassKey,
     id,
     ivar::objc_ivar,
-    message::Repr,
+    message::{Repr, ReprV2},
     method::Method,
-    object::{objc_object, ObjectData},
+    object::{objc_object, objc_object_v2, ObjectData, ObjectDataV2},
     property::Property,
     protocol::Protocol,
 };
@@ -48,6 +48,8 @@ pub struct ClassData {
     pub reference_list: i8,
     pub properties: Vec<Property>,
     pub info: Flags,
+    pub(crate) ivar_layout: Option<std::alloc::Layout>,
+    pub(crate) extra_bytes: usize,
 }
 
 #[allow(non_camel_case_types)]
@@ -83,7 +85,7 @@ impl objc_class {
         self.info.contains(Flags::META)
     }
 
-    pub fn add_ivar(&mut self, ivar: objc_ivar) -> bool {
+    pub fn add_ivar(&mut self, mut ivar: objc_ivar) -> bool {
         // Class must already be registered
         if !self.is_registered() {
             return false;
@@ -98,6 +100,16 @@ impl objc_class {
         {
             return false;
         }
+
+        let new_layout = std::alloc::Layout::from_size_align(ivar.size, ivar.alignment.to_uint())
+            .expect("invalid size-alignment combination");
+        let (ivar_layout, offset) = match self.ivar_layout {
+            Some(layout) => layout.extend(new_layout).expect(""),
+            None => (new_layout, 0),
+        };
+
+        ivar.offset = offset;
+        self.ivar_layout = Some(ivar_layout);
 
         self.ivars.push(ivar);
         true
@@ -125,6 +137,43 @@ impl objc_class {
         };
 
         objc_object::new(self.is_a(), object_data)
+    }
+
+    pub(crate) fn instance_layout(&self) -> Layout {
+        let extra_bytes_layout =
+            Layout::from_size_align(self.extra_bytes, std::mem::align_of::<u8>())
+                .expect("invalid size/align");
+        let dtable_layout = match self.ivar_layout {
+            Some(ivar_layout) => {
+                let (layout, _extra_bytes_offset) = ivar_layout
+                    .extend(extra_bytes_layout)
+                    .expect("invalid layout extension");
+                // TODO: store the extra bytes offset
+                layout
+            }
+            None => extra_bytes_layout,
+        };
+        let (layout, _dt_offset) = Layout::new::<ReprV2<ObjectDataV2>>()
+            .extend(dtable_layout)
+            .expect("bad layout I guess");
+        layout
+    }
+
+    pub fn create_object_v2(&self) -> NonNull<objc_object_v2> {
+        let extra_bytes_layout =
+            Layout::from_size_align(self.extra_bytes, std::mem::align_of::<u8>())
+                .expect("invalid size/align");
+        let dtable_layout = match self.ivar_layout {
+            Some(ivar_layout) => {
+                let (layout, _extra_bytes_offset) = ivar_layout
+                    .extend(extra_bytes_layout)
+                    .expect("invalid layout extension");
+                // TODO: store the extra bytes offset
+                layout
+            }
+            None => extra_bytes_layout,
+        };
+        objc_object_v2::new(self.is_a(), dtable_layout)
     }
 }
 

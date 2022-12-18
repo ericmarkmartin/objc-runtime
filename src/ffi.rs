@@ -2,8 +2,10 @@
 #![allow(non_camel_case_types)]
 
 use aligned_box::AlignedBox;
-use libc::c_void;
+use libc::{c_void, ptrdiff_t};
 use std::{ptr, sync::LazyLock};
+
+use crate::runtime::object::objc_object_v2;
 
 use super::runtime::{
     context::Context,
@@ -54,7 +56,7 @@ pub extern "C" fn class_isMetaClass(cls: Class) -> bool {
 pub extern "C" fn class_getInstanceSize(cls: Class) -> libc::size_t {
     match cls {
         None => 0,
-        Some(_cls) => unimplemented!("class_getInstanceSize"),
+        Some(cls) => unsafe { cls.as_ref() }.instance_layout().size(),
     }
 }
 
@@ -269,11 +271,36 @@ pub extern "C" fn class_createInstance(cls: Class, _extra_bytes: libc::size_t) -
     NonNull::new(Box::into_raw(Box::new(object))).map(NonNull::cast)
 }
 
+pub extern "C" fn class_createInstance_v2(cls: Class, _extra_bytes: libc::size_t) -> id {
+    // TODO: add [extra_bytes] to the layout
+    println!("creaet instance");
+    Some(unsafe { cls?.as_ref() }.create_object_v2().cast())
+}
+
 // TODO: think about how to do this with primitively-typed ivars.
 #[no_mangle]
 pub extern "C" fn object_getIvar(obj: id, ivar: Ivar) -> id {
     let ivar = unsafe { ivar?.as_ref() };
     *unsafe { obj?.cast::<objc_object>().as_mut() }.ivars[&ivar.name]
+}
+
+#[no_mangle]
+pub extern "C" fn object_getIvarV2(obj: id, ivar: Ivar) -> id {
+    unsafe {
+        let ivar = { ivar?.as_ref() };
+        std::ptr::read(
+            (&obj?.cast::<objc_object_v2>().as_mut().ivars[ivar.offset..]).as_ptr() as *const _,
+        )
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ivar_getOffset(ivar: Ivar) -> ptrdiff_t {
+    if let Some(ivar) = ivar {
+        unsafe { ivar.as_ref() }.offset as ptrdiff_t
+    } else {
+        0
+    }
 }
 
 #[no_mangle]
@@ -286,6 +313,16 @@ pub extern "C" fn object_setIvar(obj: id, ivar: Ivar, value: id) {
             .expect("ivar wasn't there");
 
         **aligned_box = value;
+    };
+}
+
+#[no_mangle]
+pub extern "C" fn object_setIvarV2(obj: id, ivar: Ivar, value: id) {
+    let _: Option<()> = try {
+        let ivar = unsafe { ivar?.as_ref() };
+        let ivar = &mut unsafe { obj?.cast::<objc_object_v2>().as_mut() }.ivars[ivar.offset..];
+
+        unsafe { std::ptr::write(ivar.as_mut_ptr() as *mut _, value) };
     };
 }
 
@@ -471,6 +508,41 @@ mod tests {
         object_setIvar(obj, ivar, obj2);
 
         let new_value = object_getIvar(obj, ivar);
+
+        assert_eq!(new_value, obj2);
+    }
+
+    #[test]
+    fn test_get_set_ivar_v2() {
+        let cls_name = CString::new("foobar4").expect("valid utf8");
+        let cls = objc_allocateClassPair(None, cls_name.as_ptr(), 0);
+
+        assert!(cls.is_some());
+
+        objc_registerClassPair(cls);
+
+        let ivar_name = CString::new("fizzbuzz").expect("valid utf8");
+        // TODO: fill in the types
+        class_addIvar(
+            cls,
+            ivar_name.as_ptr(),
+            std::mem::size_of::<id>(),
+            std::mem::size_of::<id>().ilog2() as u8,
+            EMPTY_STRING.as_ptr(),
+        );
+
+        let ivar = class_getInstanceVariable(cls, ivar_name.as_ptr());
+
+        let obj = class_createInstance_v2(cls, 0);
+        assert!(obj.is_some());
+        let obj2 = class_createInstance_v2(cls, 0);
+        assert!(obj2.is_some());
+
+        assert_eq!(object_getIvarV2(obj, ivar), None);
+
+        object_setIvarV2(obj, ivar, obj2);
+
+        let new_value = object_getIvarV2(obj, ivar);
 
         assert_eq!(new_value, obj2);
     }
