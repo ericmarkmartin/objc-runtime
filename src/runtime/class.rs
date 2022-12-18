@@ -1,14 +1,11 @@
 use std::{alloc::Layout, ffi::CString, ptr::NonNull};
 
-use aligned_box::AlignedBox;
-
 use super::{
     context::ClassKey,
-    id,
     ivar::objc_ivar,
-    message::{Repr, ReprV2},
+    message::Repr,
     method::Method,
-    object::{objc_object, objc_object_v2, ObjectData, ObjectDataV2},
+    object::{objc_object, ObjectData},
     property::Property,
     protocol::Protocol,
 };
@@ -115,30 +112,6 @@ impl objc_class {
         true
     }
 
-    pub fn create_object(&self) -> objc_object {
-        let object_data = ObjectData {
-            ivars: self
-                .ivars
-                .iter()
-                .map(
-                    |objc_ivar {
-                         name,
-                         size: _,
-                         alignment,
-                         ..
-                     }| {
-                        (
-                            name.clone(),
-                            AlignedBox::new(alignment.to_uint(), None).expect("invalid alignment"),
-                        )
-                    },
-                )
-                .collect(),
-        };
-
-        objc_object::new(self.is_a(), object_data)
-    }
-
     pub(crate) fn instance_layout(&self) -> Layout {
         let extra_bytes_layout =
             Layout::from_size_align(self.extra_bytes, std::mem::align_of::<u8>())
@@ -153,13 +126,14 @@ impl objc_class {
             }
             None => extra_bytes_layout,
         };
-        let (layout, _dt_offset) = Layout::new::<ReprV2<ObjectDataV2>>()
+        let (layout, _dt_offset) = Layout::new::<Repr<ObjectData>>()
             .extend(dtable_layout)
             .expect("bad layout I guess");
         layout
     }
 
-    pub fn create_object_v2(&self) -> NonNull<objc_object_v2> {
+    pub fn create_object(&self) -> NonNull<objc_object> {
+        // TODO: use [instance_layout] here
         let extra_bytes_layout =
             Layout::from_size_align(self.extra_bytes, std::mem::align_of::<u8>())
                 .expect("invalid size/align");
@@ -173,7 +147,7 @@ impl objc_class {
             }
             None => extra_bytes_layout,
         };
-        objc_object_v2::new(self.is_a(), dtable_layout)
+        objc_object::new(self.is_a(), dtable_layout)
     }
 }
 

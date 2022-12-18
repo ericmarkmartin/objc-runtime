@@ -10,13 +10,11 @@ name = "objc_rs"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-aligned_box = "0.2.1"
 bitflags = "1.3.2"
 libc = "0.2.137"
 memoffset = "0.8.0"
 pow_of_2 = "0.1.2"
 slotmap = "1.0.6"
-varlen = { version = "0.1.2", features = ["macro"] }
 
 [dev-dependencies]
 serial_test = "0.9.0"
