@@ -13,7 +13,6 @@ pub extern "C" fn objc_allocateClassPair(
     name: *const c_char,
     extra_bytes: libc::size_t,
 ) -> Class {
-    println!("foobar");
     let name = unsafe { CStr::from_ptr(name) }.to_owned();
     let superclass = superclass.map(|superclass| unsafe { superclass.as_ref() }.index);
 
@@ -33,7 +32,6 @@ pub extern "C" fn objc_getClass(name: *const c_char) -> id {
 
 #[no_mangle]
 pub extern "C" fn objc_registerClassPair(cls: Class) {
-    println!("registering class pair");
     match cls {
         None => (),
         Some(cls) => {

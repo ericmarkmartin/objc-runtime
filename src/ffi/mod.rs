@@ -1,12 +1,12 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-mod class;
+pub mod class;
 mod empty_string;
 mod global_context;
-mod objc;
-mod object;
-mod sel;
+pub mod objc;
+pub mod object;
+pub mod sel;
 
 pub use class::*;
 pub use objc::*;

@@ -8,10 +8,19 @@ pub struct SelectorInfo {
     pub(crate) types: Option<String>,
 }
 
+#[allow(non_camel_case_types)]
 pub struct objc_selector {
     pub(crate) index: SelectorKey,
     pub(crate) selector_info: SelectorInfo,
 }
+
+impl PartialEq for objc_selector {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+
+impl Eq for objc_selector {}
 
 impl SelectorInfo {
     pub(crate) fn new(name: CString) -> Self {

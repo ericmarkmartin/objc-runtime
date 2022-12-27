@@ -7,13 +7,14 @@ use super::{
 pub type objc_imp = unsafe extern "C" fn(id, SEL, ...) -> id;
 pub type IMP = Option<objc_imp>;
 
-pub struct Method {
+#[allow(non_camel_case_types)]
+pub struct objc_method {
     pub(crate) imp: objc_imp,
     pub(crate) selector: SelectorKey,
     types: String,
 }
 
-impl Method {
+impl objc_method {
     pub fn new(imp: objc_imp, selector: &objc_selector, types: String) -> Self {
         Self {
             imp,
@@ -22,3 +23,5 @@ impl Method {
         }
     }
 }
+
+pub type Method = Option<std::ptr::NonNull<objc_method>>;

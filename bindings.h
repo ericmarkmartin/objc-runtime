@@ -9,21 +9,29 @@ typedef struct Property Property;
 
 typedef struct objc_ivar objc_ivar;
 
+typedef struct objc_method objc_method;
+
 typedef struct objc_selector objc_selector;
+
+typedef struct objc_method *Method;
 
 typedef Repr<ClassData> objc_class;
 
 typedef objc_class *Class;
 
-typedef struct objc_ivar *Ivar;
-
 typedef struct objc_selector *SEL;
+
+typedef struct objc_ivar *Ivar;
 
 typedef struct Option_objc_imp IMP;
 
 typedef ClassKey Receiver;
 
 typedef Receiver *id;
+
+Method class_getClassMethod(Class cls, SEL name);
+
+Method class_getInsatnceMethod(Class cls, SEL name);
 
 const char *class_getName(Class cls);
 
@@ -77,6 +85,8 @@ Ivar object_getInstanceVariable(id obj, const char *name, void **out_value);
 
 Ivar object_setInstanceVariable(id obj, const char *name, void *value);
 
-SEL sel_registerName(const char *name);
-
 const char *sel_getName(SEL sel);
+
+bool sel_isEqual(SEL lhs, SEL rhs);
+
+SEL sel_registerName(const char *name);

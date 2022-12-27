@@ -3,7 +3,7 @@ use super::global_context::CONTEXT;
 use crate::runtime::{
     id,
     ivar::{objc_ivar, Ivar},
-    method::{Method, IMP},
+    method::{objc_method, Method, IMP},
     property::Property,
     Class, SEL,
 };
@@ -11,6 +11,50 @@ use std::{
     ffi::{c_char, c_uint, CStr},
     ptr::NonNull,
 };
+
+#[no_mangle]
+pub unsafe extern "C" fn class_getClassMethod(cls: Class, name: SEL) -> Method {
+    let cls = cls?.as_ref();
+    let name = name?.as_ref();
+    let mut context = CONTEXT.write().expect("poisoned rwlock");
+    let method = context.classes[cls.is_a()]
+        .methods
+        .iter_mut()
+        .find_map(|method| (method.selector == name.index).then_some(method))?;
+
+    NonNull::new(method as *mut _)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn class_getInsatnceMethod(cls: Class, name: SEL) -> Method {
+    let cls = cls?.as_mut();
+    let name = name?.as_ref();
+
+    let method = cls
+        .methods
+        .iter_mut()
+        .find_map(|method| (method.selector == name.index).then_some(method))?;
+
+    NonNull::new(method as *mut _)
+}
+
+/// Returns a Boolean value that indicates whether instances of a class respond
+/// to a particular selector.
+pub unsafe fn class_respondsToSelector(cls: Class, sel: SEL) -> bool {
+    let cls = match cls {
+        Some(cls) => cls.as_ref(),
+        None => return false,
+    };
+
+    let sel = match sel {
+        Some(sel) => sel.as_ref(),
+        None => return false,
+    };
+
+    cls.methods
+        .iter()
+        .any(|method| method.selector == sel.index)
+}
 
 #[no_mangle]
 pub extern "C" fn class_getName(cls: Class) -> *const c_char {
@@ -213,7 +257,7 @@ pub extern "C" fn class_addMethod(cls: Class, name: SEL, imp: IMP, types: *const
             .into_string()
             .expect("invalid utf8");
 
-        cls.methods.push(Method::new(imp, name, types));
+        cls.methods.push(objc_method::new(imp, name, types));
     };
     x.is_some()
 }

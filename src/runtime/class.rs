@@ -4,7 +4,7 @@ use super::{
     context::ClassKey,
     ivar::objc_ivar,
     message::Repr,
-    method::Method,
+    method::objc_method,
     object::{objc_object, ObjectData},
     property::Property,
     protocol::Protocol,
@@ -39,7 +39,7 @@ pub struct ClassData {
     pub(crate) name: CString,
     pub(crate) index: ClassKey,
     pub ivars: Vec<objc_ivar>,
-    pub methods: Vec<Method>,
+    pub methods: Vec<objc_method>,
     pub protocols: Vec<Protocol>,
     // TODO: this should be not an i8
     pub reference_list: i8,
