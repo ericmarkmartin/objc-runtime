@@ -55,13 +55,19 @@ struct Property *_Nonnull *class_copyPropertyList(Class cls, unsigned int *out_c
 
 bool class_addMethod(Class cls, SEL name, IMP imp, const char *types);
 
+id class_createInstance(Class cls, size_t _extra_bytes);
+
 Class objc_allocateClassPair(Class superclass, const char *name, size_t extra_bytes);
+
+id objc_getClass(const char *name);
 
 void objc_registerClassPair(Class cls);
 
-id class_createInstance(Class cls, size_t _extra_bytes);
+id objc_getMetaClass(const char *name);
 
 id object_getIvar(id obj, Ivar ivar);
+
+Class object_getClass(id obj);
 
 ptrdiff_t ivar_getOffset(Ivar ivar);
 
@@ -71,6 +77,6 @@ Ivar object_getInstanceVariable(id obj, const char *name, void **out_value);
 
 Ivar object_setInstanceVariable(id obj, const char *name, void *value);
 
-id objc_getMetaClass(const char *name);
-
 SEL sel_registerName(const char *name);
+
+const char *sel_getName(SEL sel);

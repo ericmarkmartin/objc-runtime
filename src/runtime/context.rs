@@ -90,7 +90,7 @@ impl Context {
         Some(class_index)
     }
 
-    pub fn allocate_selector(&mut self, name: String) -> SelectorKey {
+    pub fn allocate_selector(&mut self, name: CString) -> SelectorKey {
         // If an identical selector is already registered, return it.
         let selector_info = SelectorInfo::new(name);
         *self

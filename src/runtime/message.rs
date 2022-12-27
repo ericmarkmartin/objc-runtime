@@ -40,6 +40,7 @@ impl<T> Repr<T> {
     pub fn set__is_a(&mut self, class_key: ClassKey) {
         self.is_a = Receiver::new(class_key);
     }
+
     pub const fn is_a(&self) -> ClassKey {
         self.is_a.0
     }
